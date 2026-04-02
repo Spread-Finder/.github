@@ -1,95 +1,60 @@
-# Spread Finder
+<p align="center">
+  <h1 align="center">Spread Finder</h1>
+  <p align="center">
+    Real-time cryptocurrency arbitrage detection across CEX and DEX exchanges
+  </p>
+</p>
 
-**Real-time cryptocurrency arbitrage detection across centralized and decentralized exchanges.**
-
-Spread Finder monitors price differences between trading venues, validates opportunities through order book depth analysis, and delivers actionable alerts - all within milliseconds.
+<p align="center">
+  <img src="https://img.shields.io/badge/exchanges-10_CEX_|_4_DEX-green" alt="Exchanges">
+  <img src="https://img.shields.io/badge/scan_cycle-~100ms-orange" alt="Scan Cycle">
+  <img src="https://img.shields.io/badge/status-active-brightgreen" alt="Status">
+</p>
 
 ---
 
-## What It Does
+Spread Finder finds real arbitrage opportunities between cryptocurrency exchanges and delivers actionable alerts with net profit estimates - not raw spreads that disappear on execution.
 
-Traditional arbitrage tools scan prices and report raw spreads. Spread Finder goes further:
+## What You Get
 
-- **Multi-venue price monitoring** - 10 CEX exchanges, 4 DEX aggregators, and on-ramp services tracked simultaneously
-- **Two-pass validation** - fast ticker scan finds candidates, then order book depth analysis confirms real fill prices at target trade sizes
-- **Net profit estimation** - accounts for trading fees, withdrawal fees, network transfer costs, and slippage before reporting an opportunity
-- **Smart alerting** - deduplication, cooldown periods, and configurable filters eliminate noise
-
-The result: alerts that represent actual executable trades, not theoretical spreads that vanish on execution.
-
-## Architecture
-
-```
-                        Data Collection                        Analysis & Delivery
-                    +---------------------+               +------------------------+
-                    |                     |               |                        |
-  Binance  -----+  |   Exchange Workers  |    Redis      |    Spread Scanner      |
-  Bybit    -----+--| (REST + WebSocket)  |---[HOT]------>|  Pass 1: Ticker scan   |
-  OKX      -----+  |   1 worker/exchange |   [WARM]      |  Pass 2: Orderbook     |
-  KuCoin   -----+  |                     |   [COLD]      |         validation     |
-  Gate.io  -----+  +---------------------+               +----------+-------------+
-  MEXC     -----+                                                    |
-  Bitget   -----+  +---------------------+               +----------v-------------+
-  HTX      -----+  |                     |               |                        |
-  Kraken   -----+  |   OnRamp Workers    |---[ONRAMP]--->|  Filter + Dedup        |
-  BingX    -----+  |   DEX Workers       |               |  Net Profit Calculator |
-                    |                     |               |  Alert Formatter       |
-                    +---------------------+               +----------+-------------+
-                                                                     |
-                                                          +----------v-------------+
-                                                          |   Telegram Alerts      |
-                                                          |   Dashboard (FastAPI)  |
-                                                          +------------------------+
-```
-
-**Scan cycle: ~80-145ms** using Redis-cached data (vs ~95s with direct API calls).
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Core | Python 3.11+, asyncio |
-| Exchange APIs | ccxt, aiohttp, websockets |
-| Data layer | Redis (3-tier: HOT/WARM/COLD), PostgreSQL |
-| Web | FastAPI, Jinja2 |
-| Alerts | aiogram (Telegram Bot API) |
-| Validation | Pydantic v2, Decimal-based financial math |
-| Tooling | uv, ruff, pytest (1989 tests) |
-
-## Key Design Decisions
-
-**Template Method pattern for adapters** - a shared base class handles 90% of exchange integration logic. Adding a new exchange requires ~100 lines implementing ~12 one-line hooks for API-specific parsing. All 10 exchanges follow this pattern.
-
-**Identity vs Snapshot separation** - token metadata (symbol, contracts, networks) is separated from live price data. Identity is loaded once; snapshots refresh every second. This avoids mixing stable and volatile data in the same objects.
-
-**Redis 3-layer model** - HOT (prices, 15s TTL), WARM (metadata, 5min TTL), COLD (contracts, 1hr TTL). Workers write, scanner reads. This decouples data collection frequency from analysis frequency.
-
-**Decimal discipline** - all prices, fees, amounts, and spreads use Python's `Decimal` type. No floating-point arithmetic in financial calculations.
+- [x] **Price monitoring across 15 venues** - 11 centralized exchanges + 4 DEX aggregators tracked simultaneously
+- [x] **Validated opportunities** - every alert is confirmed through order book depth analysis at your target trade size
+- [x] **Net profit estimates** - trading fees, withdrawal fees, network costs, and slippage already deducted
+- [x] **Instant Telegram alerts** - opportunities delivered to your phone in real time
+- [x] **Web dashboard** - live opportunities, exchange status, historical analytics
+- [x] **Smart filtering** - deduplication, cooldown periods, configurable thresholds to cut the noise
+- [x] **Sub-second detection** - full market scan in ~100ms
 
 ## Supported Exchanges
 
-| Exchange | REST | WebSocket | Order Book | Notes |
-|----------|:----:|:---------:|:----------:|-------|
-| Binance | + | + | + | Full-featured, reference adapter |
-| Bybit | + | + | + | Requires API key |
-| OKX | + | + | + | Requires passphrase |
-| KuCoin | + | + | + | |
-| Gate.io | + | + | + | |
-| MEXC | + | + | + | Maker fee 0% |
-| Bitget | + | + | + | |
-| HTX | + | + | + | |
-| Kraken | + | + | + | Limited without API key |
-| BingX | + | + | + | No contract addresses |
+| Exchange | Real-time Prices | Orderbook Depth | Status |
+|----------|:----------------:|:---------------:|:------:|
+| Binance | + | + | Full |
+| Bybit | + | + | Full |
+| OKX | + | + | Full |
+| KuCoin | + | + | Full |
+| Gate.io | + | + | Full |
+| MEXC | + | + | Full |
+| Bitget | + | + | Full |
+| HTX | + | + | Full |
+| Kraken | + | + | Limited |
+| BingX | + | + | Limited |
+| Phemex | + | + | Limited |
 
 **DEX aggregators:** Jupiter, Raydium, OKX DEX, 1inch
 
-## Project Structure
+## How It Works
 
-| Repository | Description |
-|-----------|------------|
-| **backend** | Core arbitrage engine, exchange adapters, scanner, API |
-| **telegram-bot** | Telegram notification service |
+1. **Collect** - dedicated workers stream prices from every exchange via WebSocket and REST
+2. **Detect** - scanner finds price differences across all trading pairs in milliseconds
+3. **Validate** - top candidates go through order book depth analysis at your target amount
+4. **Calculate** - net profit estimated after all fees, withdrawal costs, and slippage
+5. **Alert** - profitable opportunities delivered via Telegram and displayed on the dashboard
+
+## Disclaimer
+
+This software is for educational and research purposes. Cryptocurrency trading involves substantial risk of loss. The authors are not responsible for any financial losses incurred through the use of this software. Always do your own research before making trading decisions.
 
 ---
 
-<sub>Built with focus on reliability, speed, and precision in financial calculations.</sub>
+<sub>Spread Finder - real-time market analysis built for speed and precision.</sub>
